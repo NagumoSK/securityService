@@ -194,3 +194,21 @@ def config_ssh_remote_ip(ip, usr, pwd):
         sys.exit(1)
 
 
+def config_exec_time(ip, usr, pwd):
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('more /etc/profile\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统超时时间{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+    check_exec_time(ip, usr, pwd)
+
+
+
+
+
+
+

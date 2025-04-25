@@ -197,3 +197,28 @@ def check_ssh_remote_ip(ip, usr, pwd) -> int:
     finally:
         time.sleep(1)
         c.close()
+
+
+# 最简单粗暴的方法，没有考虑用户组，需要继续补充用户组
+def check_exec_time(ip, usr, pwd):
+    print("开始配置超时登录时间和umask...")
+    c = paramiko.SSHClient()
+    c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    time.sleep(1)
+    try:
+        c.connect(hostname=ip, username=usr, password=pwd, port=22)
+        time.sleep(1)
+        set_umask_tmout = """
+        ( grep -qE '^\\s*umask\\s+[0-9]+' /etc/profile || echo 'umask 022' | sudo tee -a /etc/profile > /dev/null ) && \
+        ( grep -qE '^\\s*TMOUT=' /etc/profile || echo 'TMOUT=300' | sudo tee -a /etc/profile > /dev/null )
+        """
+        stdin, stdout, stderr = c.exec_command(f"echo '{SUDO_PASSWORD}' | sudo -S bash -c \"{set_umask_tmout}\"")
+        time.sleep(1)
+        print(stdout.read().decode())
+        if stderr:
+            print(stderr.read().decode())
+    except Exception as e:
+        print("Paramiko SSH链接错误：", e)
+    finally:
+        time.sleep(1)
+        c.close()
