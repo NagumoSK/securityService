@@ -24,7 +24,7 @@ def get_kernel():
 
 
 # 配置密码策略
-def config_password_policy(ip, usr, pwd):
+def config_password_policy(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('cat /etc/pam.d/common-password\n', interval=0.05)
     time.sleep(2)
@@ -36,7 +36,7 @@ def config_password_policy(ip, usr, pwd):
     print(f"已截图并保存至：{screenshot_path}")
 
     # 通过paramiko判断是否需要加固
-    res = paramiko_check.check_pwd_policy(ip, usr, pwd)
+    res = paramiko_check.check_pwd_policy(ip, usr, pwd, sudo_pwd)
 
     if res == 0:
         print(f"无需加固")
@@ -56,7 +56,7 @@ def config_password_policy(ip, usr, pwd):
 
 
 # 配置密码过期期限
-def config_password_expiration_date(ip, usr, pwd):
+def config_password_expiration_date(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/login.defs\n', interval=0.05)
     pyautogui.hotkey('space')
@@ -74,7 +74,7 @@ def config_password_expiration_date(ip, usr, pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    paramiko_check.check_pwd_expiration_date(ip, usr, pwd)
+    paramiko_check.check_pwd_expiration_date(ip, usr, pwd, sudo_pwd)
 
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/login.defs\n', interval=0.05)
@@ -94,7 +94,7 @@ def config_password_expiration_date(ip, usr, pwd):
 
 
 # 配置系统登录失败策略
-def config_login_fail_policy(ip, usr, pwd):
+def config_login_fail_policy(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('cat /etc/pam.d/login\n', interval=0.05)
     time.sleep(2)
@@ -105,7 +105,7 @@ def config_login_fail_policy(ip, usr, pwd):
     print(f"已截图并保存至：{screenshot_path}")
 
     # 通过paramiko判断是否需要加固
-    res = paramiko_check.check_login_fail_policy(ip, usr, pwd)
+    res = paramiko_check.check_login_fail_policy(ip, usr, pwd, sudo_pwd)
 
     if res == 0:
         print(f"无需加固")
@@ -125,7 +125,7 @@ def config_login_fail_policy(ip, usr, pwd):
         sys.exit(1)
 
 
-def config_ssh_remote_login(ip, usr, pwd):
+def config_ssh_remote_login(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/ssh/sshd_config\n', interval=0.05)
     time.sleep(1)
@@ -136,7 +136,7 @@ def config_ssh_remote_login(ip, usr, pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    paramiko_check.check_ssh_remote_login(ip, usr, pwd)
+    paramiko_check.check_ssh_remote_login(ip, usr, pwd, sudo_pwd)
 
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/ssh/sshd_config\n', interval=0.05)
@@ -149,7 +149,7 @@ def config_ssh_remote_login(ip, usr, pwd):
     print(f"已截图并保存至：{screenshot_path}")
 
 
-def config_ssh_remote_ip(ip, usr, pwd):
+def config_ssh_remote_ip(ip, usr, pwd,sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/hosts.allow\n', interval=0.05)
     time.sleep(1)
@@ -168,7 +168,7 @@ def config_ssh_remote_ip(ip, usr, pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    res = paramiko_check.check_ssh_remote_ip(ip, usr, pwd)
+    res = paramiko_check.check_ssh_remote_ip(ip, usr, pwd,sudo_pwd)
 
     if res != 2:
         print("SSH IP加固成功，开始截图")
@@ -194,9 +194,9 @@ def config_ssh_remote_ip(ip, usr, pwd):
         sys.exit(1)
 
 
-def config_exec_time(ip, usr, pwd):
+def config_exec_time(ip, usr, pwd,sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
-    pyautogui.typewrite('more /etc/profile\n', interval=0.05)
+    pyautogui.typewrite('cat /etc/profile\n', interval=0.05)
     time.sleep(1)
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     screenshot_path = os.path.join(save_folder, f"系统超时时间{current_time}.png")
@@ -204,11 +204,36 @@ def config_exec_time(ip, usr, pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    check_exec_time(ip, usr, pwd)
+    paramiko_check.check_exec_time(ip, usr, pwd,sudo_pwd)
+
+    time.sleep(1)
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('cat /etc/profile\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统超时时间(加固){current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
 
 
+def config_user_group(ip, usr, pwd,sudo_pwd):
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('cat /etc/passwd\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"三权分立{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
 
+    paramiko_check.check_user_group(ip, usr, pwd,sudo_pwd)
 
-
-
-
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('cat /etc/passwd\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"三权分立(加固){current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")

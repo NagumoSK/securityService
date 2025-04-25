@@ -2,13 +2,12 @@ import time
 
 import paramiko
 
-SUDO_PASSWORD = "114514\n"
-SSH_PORT = 2222
+# SUDO_PASSWORD = "114514\n"
 ALLOW_IP = '172.16.199.0/24'
 
 
 # paramiko检查密码策略（检查）
-def check_pwd_policy(ip, usr, pwd) -> int:
+def check_pwd_policy(ip, usr, pwd, sudo_pwd) -> int:
     print("开始检查系统密码策略...")
     required_policy = "password requisite pam_cracklib.so dcredit=-1 ucredit=-1 ocredit=-1 lcredit=-1 minlen=8 enforce_for_root"
     c = paramiko.SSHClient()
@@ -28,7 +27,7 @@ def check_pwd_policy(ip, usr, pwd) -> int:
             print("密码策略未配置，开始添加策略")
             # add_policy_cmd = f"echo {SUDO_PASSWORD} | sudo -S sh -c 'echo {required_policy} >> /etc/pam.d/common-password'"
             add_policy_cmd = (
-                f"echo '{SUDO_PASSWORD}' | sudo -S sh -c "
+                f"echo '{sudo_pwd}' | sudo -S sh -c "
                 f"\"echo '{required_policy}' >> /etc/pam.d/common-password\""
             )
             stdin, stdout, stderr = c.exec_command(add_policy_cmd)
@@ -50,7 +49,7 @@ def check_pwd_policy(ip, usr, pwd) -> int:
 
 
 # paramiko检查密码过期期限（直接覆盖）
-def check_pwd_expiration_date(ip, usr, pwd):
+def check_pwd_expiration_date(ip, usr, pwd, sudo_pwd):
     print("开始执行密码过期期限配置...")
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -70,7 +69,7 @@ def check_pwd_expiration_date(ip, usr, pwd):
             time.sleep(1)
             shell.send(cmd)
             time.sleep(1)
-            shell.send(SUDO_PASSWORD)
+            shell.send(sudo_pwd)
             time.sleep(2)
         shell.close()
     except Exception as e:
@@ -81,7 +80,7 @@ def check_pwd_expiration_date(ip, usr, pwd):
 
 
 # paramiko检查系统登录失败处理功能（检查）
-def check_login_fail_policy(ip, usr, pwd) -> int:
+def check_login_fail_policy(ip, usr, pwd, sudo_pwd) -> int:
     print("开始检查系统登录失败处理功能...")
     required_policy = "auth required pam_tally.so deny=10 unlock_time=300 even_deny_root root_unlock_time=300"
 
@@ -102,7 +101,7 @@ def check_login_fail_policy(ip, usr, pwd) -> int:
 
             print("系统登录失败策略未配置，开始添加策略")
             add_policy_cmd = (
-                f"echo '{SUDO_PASSWORD}' | sudo -S sh -c "
+                f"echo '{sudo_pwd}' | sudo -S sh -c "
                 f"\"echo '{required_policy}' >> /etc/pam.d/login\""
             )
             stdin, stdout, stderr = c.exec_command(add_policy_cmd)
@@ -125,7 +124,7 @@ def check_login_fail_policy(ip, usr, pwd) -> int:
 
 
 # 强制修改SSH策略，重启需要手动进行
-def check_ssh_remote_login(ip, usr, pwd):
+def check_ssh_remote_login(ip, usr, pwd, sudo_pwd):
     print("开始配置SSH策略...重启SSH需要手动进行！！！")
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -143,7 +142,7 @@ def check_ssh_remote_login(ip, usr, pwd):
         for cmd in cmds:
             shell.send(cmd)
             time.sleep(2)
-            shell.send(SUDO_PASSWORD)
+            shell.send(sudo_pwd)
             time.sleep(2)
             output = shell.recv(1024).decode()
             f_out += output
@@ -157,7 +156,7 @@ def check_ssh_remote_login(ip, usr, pwd):
 
 
 # 强制添加SSH登录ip
-def check_ssh_remote_ip(ip, usr, pwd) -> int:
+def check_ssh_remote_ip(ip, usr, pwd, sudo_pwd) -> int:
     print("开始配置SSH登录IP...")
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -172,7 +171,7 @@ def check_ssh_remote_ip(ip, usr, pwd) -> int:
 
         def add_policy_cmd(policy, file):
             return (
-                f"echo '{SUDO_PASSWORD}' | sudo -S sh -c "
+                f"echo '{sudo_pwd}' | sudo -S sh -c "
                 f"\"echo '{policy}' >> {file}\""
             )
 
@@ -199,8 +198,8 @@ def check_ssh_remote_ip(ip, usr, pwd) -> int:
         c.close()
 
 
-# 最简单粗暴的方法，没有考虑用户组，需要继续补充用户组
-def check_exec_time(ip, usr, pwd):
+# 最简单粗暴的方法，没有考虑用户组，需要进行UID判断
+def check_exec_time(ip, usr, pwd, sudo_pwd):
     print("开始配置超时登录时间和umask...")
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -212,7 +211,60 @@ def check_exec_time(ip, usr, pwd):
         ( grep -qE '^\\s*umask\\s+[0-9]+' /etc/profile || echo 'umask 022' | sudo tee -a /etc/profile > /dev/null ) && \
         ( grep -qE '^\\s*TMOUT=' /etc/profile || echo 'TMOUT=300' | sudo tee -a /etc/profile > /dev/null )
         """
-        stdin, stdout, stderr = c.exec_command(f"echo '{SUDO_PASSWORD}' | sudo -S bash -c \"{set_umask_tmout}\"")
+        stdin, stdout, stderr = c.exec_command(f"echo '{sudo_pwd}' | sudo -S bash -c \"{set_umask_tmout}\"")
+        time.sleep(1)
+        print(stdout.read().decode())
+        if stderr:
+            print(stderr.read().decode())
+    except Exception as e:
+        print("Paramiko SSH链接错误：", e)
+    finally:
+        time.sleep(1)
+        c.close()
+
+
+# 配置三权分立，目前没有考虑是否已经配置（主观行为，不好介入）
+def check_user_group(ip, usr, pwd, sudo_pwd):
+    print("开始配置三权分立...")
+    c = paramiko.SSHClient()
+    c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    time.sleep(1)
+    try:
+        c.connect(hostname=ip, username=usr, password=pwd, port=22)
+        time.sleep(1)
+        set_umask_tmout = """
+            ( grep -qE '^.*:x:1001:' /etc/passwd || echo 'auditor:x:1001:1001::/home/auditor:/bin/bash' | sudo tee -a /etc/passwd > /dev/null ) && \
+            ( grep -qE '^.*:x:1002:' /etc/passwd || echo 'security:x:1002:1002::/home/security:/bin/bash' | sudo tee -a /etc/passwd > /dev/null )
+            """
+        stdin, stdout, stderr = c.exec_command(f"echo '{sudo_pwd}' | sudo -S bash -c \"{set_umask_tmout}\"")
+        time.sleep(1)
+        print(stdout.read().decode())
+        if stderr:
+            print(stderr.read().decode())
+    except Exception as e:
+        print("Paramiko SSH链接错误：", e)
+    finally:
+        time.sleep(1)
+        c.close()
+
+
+def check_logrotate(ip, usr, pwd, sudo_pwd):
+    print("开始配置日志保存期限...")
+    c = paramiko.SSHClient()
+    c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    time.sleep(1)
+    try:
+        c.connect(hostname=ip, username=usr, password=pwd, port=22)
+        time.sleep(1)
+
+        cmds = [
+            "sed -i 's/^\\s*rotate\\s\\+[0-9]\\+/rotate 6/' /etc/logrotate.conf",
+            "sed -i 's/^\\s*#\\s*keep\\s\\+[0-9]\\+\\s\\+weeks/# keep 6 weeks/' /etc/logrotate.conf"
+        ]
+        stdin, stdout, stderr = c.exec_command(f"echo '{sudo_pwd}' | sudo -S {cmds[0]}")
+        time.sleep(1)
+        print(stdout.read().decode())
+        stdin, stdout, stderr = c.exec_command(f"echo '{sudo_pwd}' | sudo -S {cmds[1]}")
         time.sleep(1)
         print(stdout.read().decode())
         if stderr:
