@@ -1,5 +1,5 @@
 import time
-
+import re
 import paramiko
 
 # SUDO_PASSWORD = "114514\n"
@@ -8,7 +8,7 @@ ALLOW_IP = '172.16.199.0/24'
 
 # paramiko检查密码策略（检查）
 def check_pwd_policy(ip, usr, pwd, sudo_pwd) -> int:
-    print("开始检查系统密码策略...")
+    print("Starting to check the system password policy...")
     required_policy = "password requisite pam_cracklib.so dcredit=-1 ucredit=-1 ocredit=-1 lcredit=-1 minlen=8 enforce_for_root"
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
@@ -20,11 +20,11 @@ def check_pwd_policy(ip, usr, pwd, sudo_pwd) -> int:
         time.sleep(1)
         output = stdout.read().decode()
         if required_policy in output:
-            print("密码策略已配置")
+            print("Password policy had configured...")
             time.sleep(1)
             return 0
         else:
-            print("密码策略未配置，开始添加策略")
+            print("Password policy is not configured, starting to add policy.")
             # add_policy_cmd = f"echo {SUDO_PASSWORD} | sudo -S sh -c 'echo {required_policy} >> /etc/pam.d/common-password'"
             add_policy_cmd = (
                 f"echo '{sudo_pwd}' | sudo -S sh -c "
@@ -35,14 +35,14 @@ def check_pwd_policy(ip, usr, pwd, sudo_pwd) -> int:
             stdin, stdout, stderr = c.exec_command('cat /etc/pam.d/common-password')
             output = stdout.read().decode()
             if required_policy in output:
-                print(f"添加密码策略完毕：")
+                print("The password policy has been successfully added.")
                 return 1
             else:
-                print(f"添加密码策略失败！", error)
+                print(f"Failed to add the password policy!!!", error)
                 return 2
 
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
         return 2
     finally:
         c.close()
@@ -50,7 +50,7 @@ def check_pwd_policy(ip, usr, pwd, sudo_pwd) -> int:
 
 # paramiko检查密码过期期限（直接覆盖）
 def check_pwd_expiration_date(ip, usr, pwd, sudo_pwd):
-    print("开始执行密码过期期限配置...")
+    print("Starting to check the system password exec time....")
     c = paramiko.SSHClient()
     c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
     time.sleep(1)
@@ -73,7 +73,7 @@ def check_pwd_expiration_date(ip, usr, pwd, sudo_pwd):
             time.sleep(2)
         shell.close()
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()
@@ -117,7 +117,7 @@ def check_login_fail_policy(ip, usr, pwd, sudo_pwd) -> int:
                 return 2
 
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
         return 2
     finally:
         c.close()
@@ -149,7 +149,7 @@ def check_ssh_remote_login(ip, usr, pwd, sudo_pwd):
         shell.close()
         print(f_out)
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()
@@ -192,7 +192,7 @@ def check_ssh_remote_ip(ip, usr, pwd, sudo_pwd) -> int:
             print("SSH DENY IP配置失败！！！", stderr.read().decode())
             return 2
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()
@@ -217,7 +217,7 @@ def check_exec_time(ip, usr, pwd, sudo_pwd):
         if stderr:
             print(stderr.read().decode())
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()
@@ -242,7 +242,7 @@ def check_user_group(ip, usr, pwd, sudo_pwd):
         if stderr:
             print(stderr.read().decode())
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()
@@ -270,7 +270,55 @@ def check_logrotate(ip, usr, pwd, sudo_pwd):
         if stderr:
             print(stderr.read().decode())
     except Exception as e:
-        print("Paramiko SSH链接错误：", e)
+        print("⚠️Paramiko SSH connection error: ", e)
+    finally:
+        time.sleep(1)
+        c.close()
+
+
+def check_system_port(ip, usr, pwd, sudo_pwd):
+    print("Starting to check the system port....")
+    ports_to_kill = [21, 23, 80]
+    c = paramiko.SSHClient()
+    c.set_missing_host_key_policy(paramiko.AutoAddPolicy)
+    time.sleep(1)
+    try:
+        c.connect(hostname=ip, username=usr, password=pwd, port=22)
+        time.sleep(1)
+        cmd = f"echo {sudo_pwd} | sudo -S netstat -tunlp"
+        stdin, stdout, stderr = c.exec_command(cmd)
+        time.sleep(1)
+
+        netstat_output = stdout.read().decode()
+
+        # 解释正则：^表示从每一行最开头开始匹配。(tcp|tcp6)匹配Proto。\s+匹配一个或多个空格。\d+匹配第二列Recv-Q数字。[\[\]:.\d]+:(\d+)捕获Local Address:port。
+        # .*捕获Foreign Address。LISTEN捕获State中的固定文本。(\d+)捕获PID。re.MULTILINE让^和$分别匹配每一行的开头和结尾，而不是整个字符串的一次开头结尾。
+        pattern = re.compile(r'^(tcp|tcp6|udp|udp6)\s+\d+\s+\d+\s+[\[\]:.\d]+:(\d+)\s+.*LISTEN\s+(\d+)/', re.MULTILINE)
+
+        # 保存PID
+        pids_to_kill = set()
+
+        print(netstat_output)
+
+        for match in pattern.finditer(netstat_output):
+            protocol, port, pid = match.groups()
+            port = int(port)
+            if port in ports_to_kill:
+                print(f"检测到{protocol}协议，端口 {port}，对应PID {pid}")
+                pids_to_kill.add(pid)
+
+        for pid in pids_to_kill:
+            kill_cmd = f"echo {sudo_pwd} | sudo -S kill {pid}"
+            stdin, stdout, stderr = c.exec_command(kill_cmd)
+            time.sleep(1)
+            if stderr:
+                print("kill port error:", stderr.read().decode())
+
+        stdin, stdout, stderr = c.exec_command(cmd)
+        print(stdout.read().decode())
+
+    except Exception as e:
+        print("⚠️Paramiko SSH connection error: ", e)
     finally:
         time.sleep(1)
         c.close()

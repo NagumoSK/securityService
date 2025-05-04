@@ -149,7 +149,7 @@ def config_ssh_remote_login(ip, usr, pwd, sudo_pwd):
     print(f"已截图并保存至：{screenshot_path}")
 
 
-def config_ssh_remote_ip(ip, usr, pwd,sudo_pwd):
+def config_ssh_remote_ip(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('more /etc/hosts.allow\n', interval=0.05)
     time.sleep(1)
@@ -168,7 +168,7 @@ def config_ssh_remote_ip(ip, usr, pwd,sudo_pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    res = paramiko_check.check_ssh_remote_ip(ip, usr, pwd,sudo_pwd)
+    res = paramiko_check.check_ssh_remote_ip(ip, usr, pwd, sudo_pwd)
 
     if res != 2:
         print("SSH IP加固成功，开始截图")
@@ -194,7 +194,7 @@ def config_ssh_remote_ip(ip, usr, pwd,sudo_pwd):
         sys.exit(1)
 
 
-def config_exec_time(ip, usr, pwd,sudo_pwd):
+def config_exec_time(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('cat /etc/profile\n', interval=0.05)
     time.sleep(1)
@@ -204,7 +204,7 @@ def config_exec_time(ip, usr, pwd,sudo_pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    paramiko_check.check_exec_time(ip, usr, pwd,sudo_pwd)
+    paramiko_check.check_exec_time(ip, usr, pwd, sudo_pwd)
 
     time.sleep(1)
     pyautogui.typewrite('clear\n', interval=0.05)
@@ -217,7 +217,7 @@ def config_exec_time(ip, usr, pwd,sudo_pwd):
     print(f"已截图并保存至：{screenshot_path}")
 
 
-def config_user_group(ip, usr, pwd,sudo_pwd):
+def config_user_group(ip, usr, pwd, sudo_pwd):
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('cat /etc/passwd\n', interval=0.05)
     time.sleep(1)
@@ -227,7 +227,7 @@ def config_user_group(ip, usr, pwd,sudo_pwd):
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
 
-    paramiko_check.check_user_group(ip, usr, pwd,sudo_pwd)
+    paramiko_check.check_user_group(ip, usr, pwd, sudo_pwd)
 
     pyautogui.typewrite('clear\n', interval=0.05)
     pyautogui.typewrite('cat /etc/passwd\n', interval=0.05)
@@ -237,3 +237,56 @@ def config_user_group(ip, usr, pwd,sudo_pwd):
     screenshot = pyautogui.screenshot()
     screenshot.save(screenshot_path)
     print(f"已截图并保存至：{screenshot_path}")
+
+
+def config_system_port(ip, usr, pwd, sudo_pwd):
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('netstat -tunlp\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统端口{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+    paramiko_check.check_system_port(ip, usr, pwd, sudo_pwd)
+
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('netstat -tunlp\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统端口(加固){current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+
+def get_rsyslogd_auditd_status():
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('systemctl status rsyslogd\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统rsyslogd服务状态{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('systemctl status auditd\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统auditd服务状态{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+    pyautogui.typewrite('clear\n', interval=0.05)
+    pyautogui.typewrite('systemctl status firewalld\n', interval=0.05)
+    time.sleep(1)
+    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    screenshot_path = os.path.join(save_folder, f"系统firewalld服务状态{current_time}.png")
+    screenshot = pyautogui.screenshot()
+    screenshot.save(screenshot_path)
+    print(f"已截图并保存至：{screenshot_path}")
+
+
